@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Cài đặt Rewards Helper</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 220px;
+      background-color: #fff;
+      padding: 20px;
+      box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+    }
+    .sidebar h2 {
+      text-align: center;
+      color: #0078D4;
+      margin-top: 0;
+    }
+    .sidebar nav ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .sidebar nav li a {
+      display: block;
+      padding: 12px 15px;
+      text-decoration: none;
+      color: #4b4f56;
+      border-radius: 6px;
+      font-weight: 500;
+    }
+    .sidebar nav li a:hover {
+      background-color: #f0f2f5;
+    }
+    .sidebar nav li a.active {
+      background-color: #e7f3fe;
+      color: #0078D4;
+      font-weight: bold;
+    }
+    .signature {
+      margin-top: auto;
+      text-align: center;
+      font-size: 0.9em;
+      color: #6b6f76;
+    }
+    .content {
+      flex-grow: 1;
+      padding: 20px 40px;
+      overflow-y: auto;
+    }
+    h1 { color: #1d2129; }
+    .form-group { margin-bottom: 22px; }
+    label { display: block; margin-bottom: 8px; font-weight: bold; color: #4b4f56; }
+    input[type="file"], input[type="number"], input[type="time"], textarea { width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #dddfe2; box-sizing: border-box; }
+    button { padding: 10px 15px; font-weight: bold; color: #fff; background-color: #0078D4; border: none; border-radius: 6px; cursor: pointer; }
+    #status { margin-top: 15px; text-align: center; color: #28a745; font-weight: bold; }
+    .radio-group label { display: inline-block; margin-right: 15px; font-weight: normal; }
+    .sub-setting { margin-left: 25px; margin-top: 10px; display: none; }
+    .content-section { display: none; }
+    .content-section.active { display: block; }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h2>Rewards Helper</h2>
+    <nav id="sidebar-nav">
+      <ul>
+        <li><a href="#" data-section="general" class="active">Cài đặt chung</a></li>
+        <li><a href="#" data-section="topics">Chủ đề tùy chỉnh</a></li>
+        <li><a href="#" data-section="schedule">Lên lịch</a></li>
+        <li><a href="#" data-section="about">Giới thiệu</a></li>
+      </ul>
+    </nav>
+    <div id="signature" class="signature"></div>
+  </aside>
+
+  <main class="content">
+    <div id="general" class="content-section active">
+      <h1>Cài đặt chung</h1>
+      <div class="form-group">
+        <label for="tabsToOpen">Số lượt tìm kiếm mỗi lần chạy (một tab được điều hướng tuần tự):</label>
+        <input type="number" id="tabsToOpen" min="1" max="100" value="1">
+        <div style="font-size: 0.9em; color:#6b6f76; margin-top:6px">Trước đây là số tab đồng thời; bây giờ nó điều khiển số tìm kiếm tuần tự trên 1 tab.</div>
+      </div>
+      <div class="form-group">
+        <label>Cơ chế delay khi mở tab:</label>
+        <div class="radio-group">
+          <label><input type="radio" name="delayMode" value="immediate" checked> Mở ngay lập tức</label>
+          <label><input type="radio" name="delayMode" value="fixed"> Delay X giây</label>
+          <label><input type="radio" name="delayMode" value="random"> Delay ngẫu nhiên (5-10s)</label>
+        </div>
+        <div id="fixedDelaySetting" class="sub-setting">
+          <label for="fixedDelaySeconds">Số giây delay:</label>
+          <input type="number" id="fixedDelaySeconds" min="1" value="5">
+        </div>
+      </div>
+      <button id="save">Lưu Cài đặt chung</button>
+    </div>
+
+    <div id="topics" class="content-section">
+      <h1>Chủ đề tùy chỉnh</h1>
+      <div class="form-group">
+          <label for="customTopicsArea">Danh sách chủ đề (mỗi chủ đề một dòng):</label>
+          <textarea id="customTopicsArea" rows="15" style="width: 100%; box-sizing: border-box;"></textarea>
+          <button id="saveCustomTopics" style="margin-top: 10px;">Lưu danh sách</button>
+      </div>
+      <div class="form-group">
+        <label for="customTopicsFile">Hoặc tải lên danh sách từ tệp (.txt):</label>
+        <input type="file" id="customTopicsFile" accept=".txt">
+      </div>
+    </div>
+
+    <div id="schedule" class="content-section">
+      <h1>Lên lịch chạy tự động</h1>
+      <div class="form-group">
+          <label for="scheduleTime">Chọn thời gian chạy hàng ngày:</label>
+          <input type="time" id="scheduleTime">
+          <div style="margin-top: 10px;">
+            <button id="saveSchedule">Lưu Lịch</button>
+            <button id="cancelSchedule" style="background-color: #dc3545; margin-left: 8px;">Hủy Lịch</button>
+          </div>
+      </div>
+    </div>
+
+    <div id="about" class="content-section">
+      <h1>Giới thiệu & Nhật ký thay đổi</h1>
+      <div class="form-group">
+        <label>Phiên bản</label>
+        <p id="version-display">Đang tải...</p>
+      </div>
+      <div class="form-group">
+        <label>Nhật ký thay đổi (Changelog)</label>
+        <ul style="padding-left: 20px;">
+          <li><strong>v1.0 (Hiện tại):</strong> Thêm giao diện sidebar cho trang cài đặt, thêm mục giới thiệu, cập nhật chữ ký.</li>
+          <li><strong>v0.1:</strong> Phiên bản đầu tiên, hỗ trợ tìm kiếm tuần tự, tùy chỉnh chủ đề, delay và lên lịch.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="status" style="position: fixed; bottom: 20px; right: 40px; background: #28a745; color: white; padding: 10px 20px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); display: none;"></div>
+  </main>
+
+  <script src="options.js"></script>
+</body>
+</html>
