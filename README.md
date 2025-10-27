@@ -6,6 +6,8 @@ Một tiện ích mở rộng cho trình duyệt Chrome giúp tự động hóa 
 
 ## ✨ Tính năng nổi bật
 
+- ✨ **Lên lịch hàng ngày:** Tự động chạy vào một thời điểm cố định mỗi ngày mà không cần can thiệp thủ công.
+  
 - **Tự động tìm kiếm:** Thực hiện một chuỗi các tìm kiếm tuần tự trong một tab duy nhất để mô phỏng hành vi người dùng tự nhiên.
 - **Tùy chỉnh linh hoạt:**
   - Điều chỉnh **số lượng tìm kiếm** cho mỗi lần chạy.
@@ -13,7 +15,7 @@ Một tiện ích mở rộng cho trình duyệt Chrome giúp tự động hóa 
 - **Chủ đề tìm kiếm đa dạng:**
   - Sử dụng danh sách chủ đề tìm kiếm phong phú được tích hợp sẵn.
   - Tự tạo danh sách chủ đề của riêng bạn thông qua giao diện hoặc tải lên tệp `.txt`.
-- **Lên lịch hàng ngày:** Tự động chạy vào một thời điểm cố định mỗi ngày mà không cần can thiệp thủ công.
+
 - **Giao diện trực quan:**
   - **Popup** cho phép điều khiển nhanh (Bắt đầu/Dừng) và xem trạng thái.
   - **Trang Cài đặt** đầy đủ với sidebar để quản lý chi tiết các tùy chọn.
@@ -29,12 +31,12 @@ Vì tiện ích này chưa được xuất bản trên Chrome Web Store, bạn c
 
 2.  **Cài đặt vào Edge:**
     - Mở trình duyệt Chrome và truy cập `edge://extensions`.
-    - Bật **Chế độ dành cho nhà phát triển** (Developer mode) ở góc trên bên phải.
+    - Bật **Chế độ dành cho nhà phát triển** (Developer mode) ở tab trên bên trái.
     - Nhấn vào nút **Tải tiện ích đã giải nén** (Load unpacked).
     - Chọn thư mục mà bạn đã giải nén ở bước 1.
 
 3.  **Hoàn tất:**
-    - Biểu tượng của tiện ích "Rewards Helper" sẽ xuất hiện trên thanh công cụ của Chrome. Bạn có thể ghim nó để truy cập nhanh hơn.
+    - Biểu tượng của tiện ích "Rewards Helper" sẽ xuất hiện trên thanh công cụ của Edge. Bạn có thể ghim nó để truy cập nhanh hơn.
 
 ## 📖 Hướng dẫn sử dụng
 
@@ -73,3 +75,4 @@ Mọi đóng góp để cải thiện dự án đều được hoan nghênh. Vui
 
 
 <p align="center">HJZJZJ ©2024 - by minibom4 - Version 1.0</p>
+
