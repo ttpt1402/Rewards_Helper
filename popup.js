@@ -4,7 +4,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const stopBtn = document.getElementById('stopBtn');
   const optionsBtn = document.getElementById('optionsBtn');
   const statusDisplay = document.getElementById('statusDisplay');
-  const scheduleDisplay = document.getElementById('scheduleDisplay');
 
   // Update UI based on the extension's current state
   const updateUI = (status) => {
@@ -32,14 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
-  // Fetch and display the schedule
-  chrome.storage.local.get('scheduleTime', (data) => {
-    if (data.scheduleTime) {
-      scheduleDisplay.textContent = `Lịch chạy: ${data.scheduleTime} hàng ngày`;
-    } else {
-      scheduleDisplay.textContent = 'Chưa có lịch chạy tự động.';
-    }
-  });
 
   // Get initial status when popup opens
   function requestStatus() {

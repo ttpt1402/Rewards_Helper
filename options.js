@@ -12,9 +12,6 @@ const UI = {
       delayModeRadios: document.querySelectorAll('input[name="delayMode"]'),
       fixedDelaySettingDiv: document.getElementById('fixedDelaySetting'),
       fixedDelaySecondsInput: document.getElementById('fixedDelaySeconds'),
-      scheduleTimeInput: document.getElementById('scheduleTime'),
-      saveScheduleBtn: document.getElementById('saveSchedule'),
-      cancelScheduleBtn: document.getElementById('cancelSchedule'),
       customTopicsArea: document.getElementById('customTopicsArea'),
       saveCustomTopicsBtn: document.getElementById('saveCustomTopics'),
       sidebarNav: document.getElementById('sidebar-nav'),
@@ -22,6 +19,9 @@ const UI = {
       navLinks: document.querySelectorAll('#sidebar-nav a'),
       signatureDiv: document.getElementById('signature'),
       versionDisplay: document.getElementById('version-display'),
+      runLogsTable: document.querySelector('#runLogsTable tbody'),
+      clearLogsBtn: document.getElementById('clearLogs'),
+      resetSeenBtn: document.getElementById('resetSeen'),
     };
   },
 
@@ -60,7 +60,33 @@ const UI = {
     if (radio) radio.checked = true;
 
     this.elements.fixedDelaySettingDiv.style.display = selectedMode === 'fixed' ? 'block' : 'none';
-    if (settings.scheduleTime) this.elements.scheduleTimeInput.value = settings.scheduleTime;
+    // scheduleTime removed — scheduling is no longer supported
+
+    // Render run logs if provided
+    if (this.elements.runLogsTable && settings.runLogs && Array.isArray(settings.runLogs)) {
+      this.renderLogs(settings.runLogs);
+    }
+  },
+
+  renderLogs(logs) {
+    const tbody = this.elements.runLogsTable;
+    tbody.innerHTML = '';
+    if (!logs || logs.length === 0) {
+      const tr = document.createElement('tr');
+      tr.innerHTML = '<td colspan="3" style="padding:8px; color:#666">Không có nhật ký trong 7 ngày.</td>';
+      tbody.appendChild(tr);
+      return;
+    }
+
+    // Sort logs descending by time
+    const sorted = logs.slice().sort((a,b) => b.time - a.time);
+    for (const entry of sorted) {
+      const tr = document.createElement('tr');
+      const date = new Date(entry.time).toLocaleString();
+      const topics = (entry.topics || []).join(', ');
+      tr.innerHTML = `<td style="padding:6px; border-bottom:1px solid #f0f0f0">${date}</td><td style="padding:6px; border-bottom:1px solid #f0f0f0">${entry.count}</td><td style="padding:6px; border-bottom:1px solid #f0f0f0">${topics}</td>`;
+      tbody.appendChild(tr);
+    }
   },
 
   getGeneralSettings() {
@@ -73,17 +99,8 @@ const UI = {
   getCustomTopics() {
     return this.elements.customTopicsArea.value.split('\n').map(t => t.trim()).filter(t => t !== '');
   },
-
-  getScheduleTime() {
-    return this.elements.scheduleTimeInput.value;
-  },
-
   setCustomTopics(text) {
     this.elements.customTopicsArea.value = text;
-  },
-
-  clearScheduleTime() {
-    this.elements.scheduleTimeInput.value = '';
   },
 
   switchSection(targetLink) {
@@ -122,7 +139,7 @@ const App = {
     UI.init();
     this.bindEvents();
     UI.displayVersionAndSignature();
-    const settings = await Storage.load(['customTopics', 'tabsToOpen', 'delayMode', 'fixedDelaySeconds', 'scheduleTime']);
+    const settings = await Storage.load(['customTopics', 'tabsToOpen', 'delayMode', 'fixedDelaySeconds', 'runLogs']);
     UI.populateSettings(settings);
   },
 
@@ -130,14 +147,15 @@ const App = {
     UI.elements.saveButton.addEventListener('click', this.handleSaveGeneral.bind(this));
     UI.elements.fileInput.addEventListener('change', this.handleFileSelect.bind(this));
     UI.elements.saveCustomTopicsBtn.addEventListener('click', this.handleSaveCustomTopics.bind(this));
-    UI.elements.saveScheduleBtn.addEventListener('click', this.handleSaveSchedule.bind(this));
-    UI.elements.cancelScheduleBtn.addEventListener('click', this.handleCancelSchedule.bind(this));
     UI.elements.sidebarNav.addEventListener('click', this.handleSidebarNav.bind(this));
     UI.elements.delayModeRadios.forEach(radio => {
       radio.addEventListener('change', (e) => {
         UI.elements.fixedDelaySettingDiv.style.display = e.target.value === 'fixed' ? 'block' : 'none';
       });
     });
+
+    if (UI.elements.clearLogsBtn) UI.elements.clearLogsBtn.addEventListener('click', this.handleClearLogs.bind(this));
+    if (UI.elements.resetSeenBtn) UI.elements.resetSeenBtn.addEventListener('click', this.handleResetSeenTopics.bind(this));
   },
 
   handleSidebarNav(e) {
@@ -185,22 +203,18 @@ const App = {
     UI.showStatus('Danh sách chủ đề tùy chỉnh đã được lưu.');
   },
 
-  async handleSaveSchedule() {
-    const time = UI.getScheduleTime();
-    if (!time) {
-      return UI.showStatus('Vui lòng chọn thời gian hợp lệ.', 3000);
-    }
-    await Storage.save({ scheduleTime: time });
-    Storage.sendMessage({ action: 'scheduleRun', time: time });
-    UI.showStatus(`Đã lên lịch chạy tự động vào lúc ${time} hàng ngày.`);
+  async handleClearLogs() {
+    await Storage.save({ runLogs: [] });
+    UI.showStatus('Đã xóa nhật ký.');
+    if (UI.elements.runLogsTable) UI.renderLogs([]);
   },
 
-  async handleCancelSchedule() {
-    await Storage.remove('scheduleTime');
-    Storage.sendMessage({ action: 'cancelSchedule' });
-    UI.clearScheduleTime();
-    UI.showStatus('Đã hủy lịch chạy tự động.');
+  async handleResetSeenTopics() {
+    // Remove seenTopics from storage
+    await Storage.remove('seenTopics');
+    UI.showStatus('Đã đặt lại danh sách chủ đề đã dùng.');
   },
+  
 };
 
 document.addEventListener('DOMContentLoaded', () => {

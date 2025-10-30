@@ -92,14 +92,18 @@ async function getSettings() {
  */
 function selectSearchTopics(settings, allTopics) {
     const { tabsToOpen: numToOpen, customTopics = [] } = settings;
-    const topicPool = (customTopics && customTopics.length) ? customTopics : Object.values(allTopics).flat();
+    // Build the topic pool. If custom topics are provided, prefer them.
+    const rawPool = (customTopics && customTopics.length) ? customTopics : Object.values(allTopics).flat();
 
-    if (topicPool.length === 0) {
+    if (!rawPool || rawPool.length === 0) {
         return [];
     }
 
-    // Shuffle the pool and take the required number of topics
-    const shuffled = topicPool.sort(() => 0.5 - Math.random());
+    // Ensure unique topics (do not search the same topic twice in one session)
+    const uniquePool = Array.from(new Set(rawPool.map(t => t && t.toString().trim()).filter(Boolean)));
+
+    // Shuffle the unique pool and take the required number of topics
+    const shuffled = uniquePool.sort(() => 0.5 - Math.random());
     return shuffled.slice(0, numToOpen);
 }
 
@@ -113,13 +117,14 @@ async function runSearchSession(selectedTopics, settings) {
     const firstTopic = selectedTopics.shift();
     const firstUrl = buildBingUrl(firstTopic);
 
-    const newWindow = await new Promise(resolve => chrome.windows.create({ url: firstUrl, focused: true }, win => resolve(win)));
-    if (!newWindow) {
-        console.error("Could not create a new window.");
+    // Create a new tab in the current window (do not open a new window)
+    const createdTab = await new Promise(resolve => chrome.tabs.create({ url: firstUrl, active: true }, tab => resolve(tab)));
+    if (!createdTab) {
+        console.error("Could not create a new tab.");
         return;
     }
 
-    const tabId = newWindow.tabs?.[0]?.id;
+    const tabId = createdTab.id;
     if (!tabId) {
         console.error("Could not get created tab id.");
         return;
@@ -130,6 +135,7 @@ async function runSearchSession(selectedTopics, settings) {
     sendStatus();
 
     let previousTopic = firstTopic;
+    const executedTopics = [firstTopic];
 
     for (const topic of selectedTopics) {
         if (stopRequested) {
@@ -137,8 +143,10 @@ async function runSearchSession(selectedTopics, settings) {
             break;
         }
 
+        // Delay behavior: immediate | fixed | random
         if (delayMode !== 'immediate') {
-            const delayMs = (delayMode === 'fixed') ? fixedDelaySeconds * 1000 : randInt(5000, 10000);
+            // Random delay now ranges from 5s to 20s (5000-20000 ms)
+            const delayMs = (delayMode === 'fixed') ? fixedDelaySeconds * 1000 : randInt(5000, 20000);
             await sleep(delayMs);
         }
 
@@ -159,7 +167,11 @@ async function runSearchSession(selectedTopics, settings) {
             });
         });
         previousTopic = topic;
+        executedTopics.push(topic);
     }
+
+    // Return the list of topics that were actually executed in this session
+    return executedTopics;
 }
 
 /**
@@ -177,7 +189,30 @@ const openTabs = async () => {
         console.log("Starting search session...");
 
         const settings = await getSettings();
-        const selectedTopics = selectSearchTopics(settings, topics);
+
+        // Load persisted seenTopics and runLogs
+        const storageData = await chrome.storage.local.get(['seenTopics', 'runLogs']);
+        let seenTopics = storageData.seenTopics || {};
+        let runLogs = storageData.runLogs || [];
+
+        // Prepare topic pool, excluding topics seen in previous runs
+        const { tabsToOpen: numToOpen, customTopics = [] } = settings;
+        const rawPool = (customTopics && customTopics.length) ? customTopics : Object.values(topics).flat();
+        const uniquePool = Array.from(new Set(rawPool.map(t => t && t.toString().trim()).filter(Boolean)));
+
+        // Filter out topics we've already seen
+        let available = uniquePool.filter(t => !(t in seenTopics));
+
+        // If not enough unseen topics remain, clear seenTopics (rotate) and use full pool
+        if (available.length < numToOpen) {
+            console.log("Not enough unseen topics, clearing seenTopics to rotate pool.");
+            seenTopics = {};
+            available = uniquePool.slice();
+        }
+
+        // Shuffle and pick
+        const shuffled = available.sort(() => 0.5 - Math.random());
+        const selectedTopics = shuffled.slice(0, numToOpen);
 
         if (selectedTopics.length === 0) {
             console.error("No topics available to search.");
@@ -190,9 +225,26 @@ const openTabs = async () => {
         await chrome.action.setBadgeText({ text: `${openedTabs}/${totalTabs}` });
         sendStatus();
 
-        await runSearchSession(selectedTopics, settings);
+        // Run the session and get the actual executed topics
+        const executedTopics = await runSearchSession(selectedTopics, settings) || [];
 
-        console.log("Search session finished.");
+        console.log("Search session finished. Executed topics:", executedTopics);
+
+        // Persist seenTopics with timestamps for executed topics
+        const now = Date.now();
+        executedTopics.forEach(t => { if (t) seenTopics[t] = now; });
+
+        // Append run log and trim logs older than 7 days
+        runLogs.push({ time: now, count: executedTopics.length, topics: executedTopics });
+        const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
+        runLogs = runLogs.filter(entry => (entry.time && entry.time >= sevenDaysAgo));
+
+        // Save updated seenTopics and runLogs
+        try {
+            await chrome.storage.local.set({ seenTopics, runLogs });
+        } catch (e) {
+            console.error('Failed to persist seenTopics/runLogs:', e);
+        }
     } catch (error) {
         console.error("An error occurred during the search session:", error);
     } finally {
@@ -210,41 +262,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.log("Stop request queued.");
     } else if (request.action === "getStatus") {
         sendResponse({ isRunning, openedTabs, totalTabs });
-    } else if (request.action === "scheduleRun") {
-        const [hour, minute] = request.time.split(':').map(Number);
-        const now = new Date();
-        const nextRun = new Date();
-        nextRun.setHours(hour, minute, 0, 0);
-        if (nextRun < now) nextRun.setDate(nextRun.getDate() + 1);
-        chrome.alarms.create('dailyRun', { when: nextRun.getTime(), periodInMinutes: 24 * 60 });
-        console.log(`Alarm set for ${nextRun}`);
-    } else if (request.action === "cancelSchedule") {
-        chrome.alarms.clear('dailyRun');
-        console.log("Alarm canceled.");
     }
     return true; // Keep message channel open for async response
 });
-
-chrome.alarms.onAlarm.addListener(alarm => {
-    if (alarm.name === 'dailyRun') {
-        console.log("Daily scheduled run triggered.");
-        openTabs();
-    }
-});
-
-chrome.runtime.onStartup.addListener(() => {
-    chrome.storage.local.get('scheduleTime', data => {
-        if (data.scheduleTime) {
-            const [hour, minute] = data.scheduleTime.split(':').map(Number);
-            const now = new Date();
-            const nextRun = new Date();
-            nextRun.setHours(hour, minute, 0, 0);
-            if (nextRun < now) nextRun.setDate(nextRun.getDate() + 1);
-            chrome.alarms.create('dailyRun', { when: nextRun.getTime(), periodInMinutes: 24 * 60 });
-            console.log(`Alarm re-created on startup for ${nextRun}`);
-        }
-    });
-});
+// Note: scheduling/manual time features removed per recent change request.
 
 loadTopics();
 console.log("Background script initialized.");
